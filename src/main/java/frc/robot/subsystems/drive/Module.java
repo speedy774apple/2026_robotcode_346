@@ -13,13 +13,14 @@
 
 package frc.robot.subsystems.drive;
 
+import static edu.wpi.first.units.Units.MetersPerSecond;
+
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import org.littletonrobotics.junction.Logger;
@@ -74,14 +75,38 @@ public class Module {
 	/**
 	 * Runs the module with the specified setpoint state. Mutates the state to
 	 * optimize it.
+	 * 
+	 * IMPORTANT: This method correctly:
+	 * 1. Optimizes the wheel angle to minimize rotation (using current angle)
+	 * 2. Applies cosine scaling to prevent wheel slip during turns
+	 * 3. Converts speed to voltage for open-loop drive control
+	 * 4. Sets both drive voltage and turn angle correctly
 	 */
 	public void runSetpoint(SwerveModuleState state) {
-		// Optimize velocity setpoint
-		state.optimize(getAngle());
-		state.cosineScale(inputs.turnPosition);
+		// Get current wheel angle BEFORE optimization
+		Rotation2d currentAngle = getAngle();
+		
+		// Optimize velocity setpoint - minimizes wheel rotation by choosing
+		// the closest equivalent angle (current angle ± 180°)
+		state.optimize(currentAngle);
+		
+		// Apply cosine scaling to prevent wheel slip when turning
+		// This scales the drive speed based on how much the wheel needs to turn
+		// If the wheel is already at the target angle, full speed is applied
+		// If the wheel needs to turn 90°, speed is scaled to 0
+		state.cosineScale(currentAngle);
 
-		// Apply setpoints
-		io.setDriveVelocity(state.speedMetersPerSecond / constants.WheelRadius);
+		// Convert speed (m/s) to voltage for open-loop drive control
+		// This matches the CTRE generated code approach
+		double maxSpeedMetersPerSec = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
+		
+		// Normalize speed to -1.0 to 1.0, then multiply by 12V
+		// Clamp to prevent over-voltage
+		double normalizedSpeed = state.speedMetersPerSecond / maxSpeedMetersPerSec;
+		double driveVoltageOutput = Math.max(-12.0, Math.min(12.0, normalizedSpeed * 12.0));
+		
+		// Apply setpoints to hardware
+		io.setDriveOpenLoop(driveVoltageOutput);
 		io.setTurnPosition(state.angle);
 	}
 
@@ -141,6 +166,6 @@ public class Module {
 
 	/** Returns the module velocity in rotations/sec (Phoenix native units). */
 	public double getFFCharacterizationVelocity() {
-		return Units.radiansToRotations(inputs.driveVelocityRadPerSec);
+		return edu.wpi.first.math.util.Units.radiansToRotations(inputs.driveVelocityRadPerSec);
 	}
 }

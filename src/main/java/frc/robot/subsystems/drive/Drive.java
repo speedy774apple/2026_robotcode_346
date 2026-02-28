@@ -68,8 +68,8 @@ import frc.robot.util.LocalADStarAK;
 
 public class Drive extends SubsystemBase {
 	// TunerConstants doesn't include these constants, so they are declared locally
-	static final double ODOMETRY_FREQUENCY = new CANBus(TunerConstants.DrivetrainConstants.CANBusName).isNetworkFD()
-			? 250.0
+	static final double ODOMETRY_FREQUENCY = Constants.currentMode == Mode.REAL
+			? (new CANBus(TunerConstants.DrivetrainConstants.CANBusName).isNetworkFD() ? 250.0 : 100.0)
 			: 100.0;
 	public static final double DRIVE_BASE_RADIUS = Math.max(
 			Math.max(
@@ -118,6 +118,17 @@ public class Drive extends SubsystemBase {
 			lastModulePositions, new Pose2d());
 
 	private double lastEstimatorTimestamp = 0.0;
+
+	/** True after the first vision measurement has been applied (used to snap initial pose). */
+	private boolean hasReceivedVisionMeasurement = false;
+
+	/** Smoothed rotation for field-relative drive to reduce jitter. */
+	private Rotation2d smoothedRotation = new Rotation2d();
+	private static final double ROTATION_SMOOTH_ALPHA = 0.12;
+
+	/** Smoothed chassis speeds so module setpoints don't change every cycle (reduces IRL jitter/clicking). */
+	private ChassisSpeeds smoothedChassisSpeeds = new ChassisSpeeds();
+	private static final double CHASSIS_SMOOTH_ALPHA = 0.22; // lower = smoother drive, less responsive
 
 	private final SwerveSetpointGenerator setpointGenerator;
 	private SwerveSetpoint previousSetpoint;
@@ -211,6 +222,10 @@ public class Drive extends SubsystemBase {
 			for (var module : modules) {
 				module.stop();
 			}
+			// Allow next enable to re-snap to first vision pose
+			hasReceivedVisionMeasurement = false;
+			smoothedChassisSpeeds = new ChassisSpeeds();
+			return; // Don't process any commands when disabled
 		}
 
 		// Log empty setpoint states when disabled
@@ -258,8 +273,11 @@ public class Drive extends SubsystemBase {
 		// Update gyro alert
 		gyroDisconnectedAlert.set(!gyroInputs.connected && Constants.currentMode != Mode.SIM);
 
-		// Log robot pose for AdvantageScope visualization
+		// Log robot pose (odometry + vision fused) for AdvantageScope visualization
 		Pose2d robotPose = poseEstimator.getEstimatedPosition();
+		// Smooth rotation so field-relative drive doesn't jitter
+		smoothedRotation = smoothedRotation.interpolate(robotPose.getRotation(), ROTATION_SMOOTH_ALPHA);
+		Logger.recordOutput("Odometry/Robot", robotPose);
 		Logger.recordOutput("RobotPose2d", robotPose);
 		Logger.recordOutput("RobotPose3d", new Pose3d(robotPose));
 	}
@@ -272,21 +290,26 @@ public class Drive extends SubsystemBase {
 	 */
 
 	public void runVelocity(ChassisSpeeds speeds) {
-		// Calculate module setpoints
-		ChassisSpeeds discreteSpeeds = ChassisSpeeds.discretize(speeds, 0.02);
+		// Smooth commanded speeds so module setpoints don't change every cycle (reduces IRL jitter/clicking)
+		double vx = smoothedChassisSpeeds.vxMetersPerSecond
+				+ CHASSIS_SMOOTH_ALPHA * (speeds.vxMetersPerSecond - smoothedChassisSpeeds.vxMetersPerSecond);
+		double vy = smoothedChassisSpeeds.vyMetersPerSecond
+				+ CHASSIS_SMOOTH_ALPHA * (speeds.vyMetersPerSecond - smoothedChassisSpeeds.vyMetersPerSecond);
+		double omega = smoothedChassisSpeeds.omegaRadiansPerSecond
+				+ CHASSIS_SMOOTH_ALPHA * (speeds.omegaRadiansPerSecond - smoothedChassisSpeeds.omegaRadiansPerSecond);
+		smoothedChassisSpeeds = new ChassisSpeeds(vx, vy, omega);
+
+		ChassisSpeeds discreteSpeeds = ChassisSpeeds.discretize(smoothedChassisSpeeds, 0.02);
 		SwerveModuleState[] setpointStates = kinematics.toSwerveModuleStates(discreteSpeeds);
 		SwerveDriveKinematics.desaturateWheelSpeeds(setpointStates, TunerConstants.kSpeedAt12Volts);
 
-		// Log unoptimized setpoints and setpoint speeds
 		Logger.recordOutput("SwerveStates/Setpoints", setpointStates);
 		Logger.recordOutput("SwerveChassisSpeeds/Setpoints", discreteSpeeds);
 
-		// Send setpoints to modules
 		for (int i = 0; i < 4; i++) {
 			modules[i].runSetpoint(setpointStates[i]);
 		}
 
-		// Log optimized setpoints (runSetpoint mutates each state)
 		Logger.recordOutput("SwerveStates/SetpointsOptimized", setpointStates);
 	}
 
@@ -387,14 +410,37 @@ public class Drive extends SubsystemBase {
 		return poseEstimator.getEstimatedPosition();
 	}
 
-	/** Returns the current odometry rotation. */
+	/** Returns the current odometry rotation (smoothed to reduce drive jitter). */
 	public Rotation2d getRotation() {
-		return getPose().getRotation();
+		return smoothedRotation;
 	}
 
 	/** Resets the current odometry pose. */
 	public void setPose(Pose2d pose) {
 		poseEstimator.resetPosition(rawGyroRotation, getModulePositions(), pose);
+		smoothedRotation = pose.getRotation();
+	}
+
+	/**
+	 * Zeros the gyro heading to zero without breaking odometry or vision.
+	 * Resets the robot's heading to zero while preserving the current position.
+	 * This is safe to call during teleop and will not interfere with vision pose estimation.
+	 * 
+	 * IMPORTANT: This resets the internal gyro reference (rawGyroRotation) to zero,
+	 * ensuring field-relative math is consistent with the pose estimator.
+	 */
+	public void zeroGyro() {
+		Pose2d currentPose = getPose();
+		
+		// Force internal gyro reference to zero - THIS IS CRITICAL
+		// Without this, the gyro still reports old yaw and field-relative math breaks
+		rawGyroRotation = new Rotation2d();
+		
+		// Reset pose with current translation but zero rotation
+		Pose2d zeroHeadingPose = new Pose2d(currentPose.getTranslation(), new Rotation2d());
+		poseEstimator.resetPosition(rawGyroRotation, getModulePositions(), zeroHeadingPose);
+		smoothedRotation = new Rotation2d();
+		Logger.recordOutput("Drive/GyroZeroed", true);
 	}
 
 	/** Adds a new timestamped vision measurement. */
@@ -402,8 +448,18 @@ public class Drive extends SubsystemBase {
 			Pose2d visionRobotPoseMeters,
 			double timestampSeconds,
 			Matrix<N3, N1> visionMeasurementStdDevs) {
-		poseEstimator.addVisionMeasurement(
-				visionRobotPoseMeters, timestampSeconds, visionMeasurementStdDevs);
+		if (!hasReceivedVisionMeasurement) {
+			// First vision reading: snap pose to camera so we don't stay at (0,0)
+			hasReceivedVisionMeasurement = true;
+			rawGyroRotation = visionRobotPoseMeters.getRotation();
+			poseEstimator.resetPosition(rawGyroRotation, getModulePositions(), visionRobotPoseMeters);
+			smoothedRotation = visionRobotPoseMeters.getRotation();
+			Logger.recordOutput("Drive/VisionPoseInitialized", true);
+		} else {
+			// Fuse vision smoothly (no periodic snap – avoids jerky/clicking drive)
+			poseEstimator.addVisionMeasurement(
+					visionRobotPoseMeters, timestampSeconds, visionMeasurementStdDevs);
+		}
 	}
 
 	/** Returns the maximum linear speed in meters per sec. */

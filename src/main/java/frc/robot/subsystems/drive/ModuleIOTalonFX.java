@@ -77,7 +77,7 @@ public class ModuleIOTalonFX implements ModuleIO {
 	// Voltage control requests
 	private final VoltageOut voltageRequest = new VoltageOut(0);
 	private final MotionMagicVoltage positionVoltageRequest = new MotionMagicVoltage(0.0);
-	private final VelocityVoltage velocityVoltageRequest = new VelocityVoltage(0.0);
+	private final VelocityVoltage velocityVoltageRequest = new VelocityVoltage(0.0).withSlot(0);
 
 	// Torque-current control requests
 	private final TorqueCurrentFOC torqueCurrentRequest = new TorqueCurrentFOC(0);
@@ -129,8 +129,8 @@ public class ModuleIOTalonFX implements ModuleIO {
 		tryUntilOk(5, () -> driveTalon.getConfigurator().apply(driveConfig, 0.25));
 		tryUntilOk(5, () -> driveTalon.setPosition(0.0, 0.25));
 
-		// Configure turn motor
-		var turnConfig = new TalonFXConfiguration();
+		// Configure turn motor - use initial configs to preserve current limit settings
+		var turnConfig = constants.SteerMotorInitialConfigs;
 		turnConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
 		turnConfig.Slot0 = constants.SteerMotorGains;
 		turnConfig.Feedback.FeedbackRemoteSensorID = constants.EncoderId;
@@ -158,7 +158,30 @@ public class ModuleIOTalonFX implements ModuleIO {
 		cancoderConfig.MagnetSensor.SensorDirection = constants.EncoderInverted
 				? SensorDirectionValue.Clockwise_Positive
 				: SensorDirectionValue.CounterClockwise_Positive;
-		cancoder.getConfigurator().apply(cancoderConfig);
+		tryUntilOk(5, () -> cancoder.getConfigurator().apply(cancoderConfig, 0.25));
+
+		// Wait for CANCoder to be ready
+		try {
+			Thread.sleep(50); // Small delay for CANCoder to initialize
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
+
+		// Home steer motor to absolute encoder position (CRITICAL for proper operation)
+		// Get absolute position from CANCoder
+		var absolutePositionSignal = cancoder.getAbsolutePosition();
+		absolutePositionSignal.waitForUpdate(0.5);
+		double absolutePositionRotations = absolutePositionSignal.getValueAsDouble();
+		
+		// When using FusedCANcoder, the motor feedback already accounts for gear ratio
+		// We need to set the motor position to match what the encoder sees
+		// Since the motor uses the encoder as feedback, we convert encoder rotations to motor rotations
+		double motorPositionRotations = absolutePositionRotations / constants.SteerMotorGearRatio;
+		tryUntilOk(5, () -> turnTalon.setPosition(motorPositionRotations, 0.25));
+		
+		// Force a position command to home the motors (this makes the "click" sound)
+		tryUntilOk(3, () -> turnTalon.setControl(
+				positionVoltageRequest.withPosition(motorPositionRotations).withSlot(0)));
 
 		// Create timestamp queue
 		timestampQueue = PhoenixOdometryThread.getInstance().makeTimestampQueue();
@@ -231,6 +254,9 @@ public class ModuleIOTalonFX implements ModuleIO {
 
 	@Override
 	public void setDriveOpenLoop(double output) {
+		// Clamp output to valid voltage range
+		output = Math.max(-12.0, Math.min(12.0, output));
+		
 		driveTalon.setControl(
 				switch (constants.DriveMotorClosedLoopOutput) {
 					case Voltage -> voltageRequest.withOutput(output);
@@ -261,9 +287,9 @@ public class ModuleIOTalonFX implements ModuleIO {
 	public void setTurnPosition(Rotation2d rotation) {
 		turnTalon.setControl(
 				switch (constants.SteerMotorClosedLoopOutput) {
-					case Voltage -> positionVoltageRequest.withPosition(rotation.getRotations());
+					case Voltage -> positionVoltageRequest.withPosition(rotation.getRotations()).withSlot(0);
 					case TorqueCurrentFOC -> positionTorqueCurrentRequest.withPosition(
-							rotation.getRotations());
+							rotation.getRotations()).withSlot(0);
 				});
 	}
 }

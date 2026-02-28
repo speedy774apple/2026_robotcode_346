@@ -18,6 +18,7 @@ import frc.robot.subsystems.vision.VisionIO.SingleTagObservation;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Supplier;
 import org.littletonrobotics.junction.Logger;
 
 /**
@@ -32,9 +33,12 @@ public class VisionLocalizer extends SubsystemBase {
 	// avoid NullPointerExceptions by setting a default no-op
 	private VisionConsumer consumer;
 
-	private Drive drive;
+	private Supplier<Pose2d> poseSupplier;
 
 	private boolean hasAcceptedVisionPose = false;
+
+	/** Vision-only pose (from 3 cameras + tags, no odometry fusion). Logged for AdvantageScope. */
+	private Pose2d lastVisionOnlyPose = new Pose2d();
 
 	// private double[] cameraStdDevFactors;
 
@@ -44,22 +48,17 @@ public class VisionLocalizer extends SubsystemBase {
 	 * @param consumer
 	 *            functional interface responsible for adding vision measurements to
 	 *            drive pose
-	 * @param aprilTagLayout
-	 *            the field layout for current year
-	 * @param cameraStdDevFactors
-	 *            factors to multiply standard deviation. matches camera index
-	 *            (camera 0 -> index 0 in factors)
+	 * @param poseSupplier
+	 *            supplier function that returns current robot pose for pose delta rejection
 	 * @param io
 	 *            of each camera, using photon vision or sim
 	 */
 	public VisionLocalizer(
-			VisionConsumer consumer, Drive drive,
-
-			// double[] cameraStdDevFactors,
+			VisionConsumer consumer, Supplier<Pose2d> poseSupplier,
 			VisionIO... io) {
 		this.consumer = consumer;
 		this.io = io;
-		this.drive = drive;
+		this.poseSupplier = poseSupplier;
 		// this.cameraStdDevFactors = cameraStdDevFactors;
 
 		for (int i = 0; i < io.length; i++) {
@@ -172,6 +171,7 @@ public class VisionLocalizer extends SubsystemBase {
 				}
 
 				robotPosesAccepted.add(observation.pose());
+				lastVisionOnlyPose = observation.pose().toPose2d();
 
 				consumer.accept(
 						observation.pose().toPose2d(),
@@ -188,6 +188,9 @@ public class VisionLocalizer extends SubsystemBase {
 		}
 
 		logSummaryData(allRobotPoses, allRobotPosesAccepted, allRobotPosesRejected);
+
+		// Log vision-only pose (3 cameras + tags only, no drive fusion) for AdvantageScope
+		Logger.recordOutput("Vision/VisionOnlyPose", lastVisionOnlyPose);
 	}
 
 	/** sets a VisionConsumer for the vision to send estimates to */
@@ -238,19 +241,8 @@ public class VisionLocalizer extends SubsystemBase {
 			return true;
 		}
 
-		// PART 2: After the first pose, use pose-delta rejection
-		// Vision must ONLY be fused if it agrees with odometry
-		Pose2d current = drive.getPose();
-		Pose2d vision = observation.pose().toPose2d();
-
-		double translationError = current.getTranslation().getDistance(vision.getTranslation());
-		double rotationErrorDeg = Math.abs(
-				current.getRotation().minus(vision.getRotation()).getDegrees());
-
-		if (translationError > 0.75 || rotationErrorDeg > 25.0) {
-			return true; // reject this outlier
-		}
-
+		// When tags are visible, let vision through so it can take over the robot pose.
+		// Do not reject for disagreeing with odometry – vision corrects drift.
 		return false;
 	}
 
@@ -269,15 +261,15 @@ public class VisionLocalizer extends SubsystemBase {
 		double d = observation.averageTagDistance();
 		int n = observation.tagCount();
 
-		double baseLin = 0.06; // 6 cm base noise
-		double baseAng = 0.15; // ~9° base noise
+		// Vision takes over when tags are seen; slightly higher std dev reduces jitter.
+		double baseLin = 0.03; // 3 cm base
+		double baseAng = 0.04;  // ~2.3° base
 
 		double linearStdDev = baseLin * (1.0 + (d * d) / n);
 		double angularStdDev = baseAng * (1.0 + (d * d) / n);
 
-		// Clamp trust so vision never overpowers gyro
-		linearStdDev = Math.min(linearStdDev, 0.60); // 60 cm max
-		angularStdDev = Math.min(angularStdDev, 0.50); // ~29° max
+		linearStdDev = Math.min(linearStdDev, 0.18); // 18 cm max
+		angularStdDev = Math.min(angularStdDev, 0.12); // ~6.9° max
 
 		return VecBuilder.fill(linearStdDev, linearStdDev, angularStdDev);
 	}

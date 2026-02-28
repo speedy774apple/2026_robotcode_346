@@ -68,7 +68,8 @@ public class Robot extends LoggedRobot {
 
 		m_robotContainer = new RobotContainer();
 
-		PathfindingCommand.warmupCommand().schedule();
+		// PathfindingCommand warmup
+		CommandScheduler.getInstance().schedule(PathfindingCommand.warmupCommand());
 	}
 
 	@Override
@@ -117,7 +118,7 @@ public class Robot extends LoggedRobot {
 
 		// schedule the autonomous command (example)
 		if (m_autonomousCommand != null) {
-			m_autonomousCommand.schedule();
+			CommandScheduler.getInstance().schedule(m_autonomousCommand);
 		}
 	}
 

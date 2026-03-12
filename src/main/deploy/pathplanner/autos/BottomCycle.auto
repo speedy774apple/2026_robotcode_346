@@ -7,13 +7,7 @@
         {
           "type": "path",
           "data": {
-            "pathName": "TopDoubleShoot1"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "TopDoubleShoot2"
+            "pathName": "Bottomcycle_1"
           }
         },
         {
@@ -21,15 +15,15 @@
           "data": {
             "commands": [
               {
-                "type": "path",
-                "data": {
-                  "pathName": "TopDoubleShoot3"
-                }
-              },
-              {
                 "type": "named",
                 "data": {
                   "name": "Intake"
+                }
+              },
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "Bottomcycle_2"
                 }
               }
             ]
@@ -38,7 +32,7 @@
         {
           "type": "path",
           "data": {
-            "pathName": "TopDoubleShoot4"
+            "pathName": "Bottomcycle_3"
           }
         },
         {
@@ -48,25 +42,19 @@
           }
         },
         {
-          "type": "path",
-          "data": {
-            "pathName": "TopDoubleShoot5"
-          }
-        },
-        {
           "type": "parallel",
           "data": {
             "commands": [
               {
-                "type": "path",
-                "data": {
-                  "pathName": "TopDoubleShoot6"
-                }
-              },
-              {
                 "type": "named",
                 "data": {
                   "name": "Intake"
+                }
+              },
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "Bottomcycle_4"
                 }
               }
             ]
@@ -75,7 +63,13 @@
         {
           "type": "path",
           "data": {
-            "pathName": "TopDoubleShoot7"
+            "pathName": "Bottomcycle_5"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "Shoot"
           }
         }
       ]

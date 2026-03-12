@@ -7,13 +7,7 @@
         {
           "type": "path",
           "data": {
-            "pathName": "TopPath1"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "TopPath2"
+            "pathName": "Top_1"
           }
         },
         {
@@ -23,7 +17,7 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "TopPath3"
+                  "pathName": "Top_2"
                 }
               },
               {
@@ -36,6 +30,12 @@
           }
         },
         {
+          "type": "path",
+          "data": {
+            "pathName": "Top_3"
+          }
+        },
+        {
           "type": "named",
           "data": {
             "name": "Shoot"
@@ -44,7 +44,13 @@
         {
           "type": "path",
           "data": {
-            "pathName": "TopPath4"
+            "pathName": "Top_4"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "Climb"
           }
         }
       ]

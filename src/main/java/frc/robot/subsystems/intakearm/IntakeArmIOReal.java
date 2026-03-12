@@ -18,11 +18,11 @@ import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
-import frc.robot.subsystems.drive.TunerConstants;
+import frc.robot.Constants;
 
 public class IntakeArmIOReal implements IntakeArmIO {
-	private final TalonFX armMotor = new TalonFX(IntakeArmConstants.ARM_MOTOR_ID, TunerConstants.DrivetrainConstants.CANBusName);
-	private final CANcoder armEncoder = new CANcoder(IntakeArmConstants.ARM_CANCODER_ID, TunerConstants.DrivetrainConstants.CANBusName);
+	private final TalonFX armMotor = new TalonFX(IntakeArmConstants.ARM_MOTOR_ID, Constants.SUBSYSTEMS_CAN_BUS);
+	private final CANcoder armEncoder = new CANcoder(IntakeArmConstants.ARM_CANCODER_ID, Constants.DRIVETRAIN_CAN_BUS);
 
 	private final DutyCycleOut dutyCycleOut = new DutyCycleOut(0.0);
 	private final NeutralOut neutralOut = new NeutralOut();
@@ -58,6 +58,12 @@ public class IntakeArmIOReal implements IntakeArmIO {
 	@Override
 	public void stop() {
 		armMotor.setControl(neutralOut);
+	}
+
+	@Override
+	public void setManualOutputPercent(double percent) {
+		double output = MathUtil.clamp(percent, -100.0, 100.0) / 100.0;
+		armMotor.setControl(dutyCycleOut.withOutput(output));
 	}
 
 	@Override

@@ -18,7 +18,8 @@ public class IntakeArm extends SubsystemBase {
 		IDLE,
 		MOVING_UP,
 		MOVING_DOWN,
-		HOLDING
+		HOLDING,
+		MANUAL
 	}
 
 	private final IntakeArmIO io;
@@ -33,17 +34,26 @@ public class IntakeArm extends SubsystemBase {
 	}
 
 	public void setTargetAngleDeg(double targetAngleDeg) {
-		this.targetAngleDeg = targetAngleDeg;
+		this.targetAngleDeg = MathUtil.clamp(
+				targetAngleDeg,
+				ARM_MIN_ANGLE_DEG + IntakeArmConstants.ARM_SOFT_LIMIT_BUFFER_DEG,
+				ARM_MAX_ANGLE_DEG - IntakeArmConstants.ARM_SOFT_LIMIT_BUFFER_DEG);
 		state = IntakeArmState.HOLDING;
 	}
 
 	public void moveUp() {
-		targetAngleDeg = IntakeArmConstants.ARM_UP_ANGLE_DEG;
+		targetAngleDeg = MathUtil.clamp(
+				IntakeArmConstants.ARM_UP_ANGLE_DEG,
+				ARM_MIN_ANGLE_DEG + IntakeArmConstants.ARM_SOFT_LIMIT_BUFFER_DEG,
+				ARM_MAX_ANGLE_DEG - IntakeArmConstants.ARM_SOFT_LIMIT_BUFFER_DEG);
 		state = IntakeArmState.MOVING_UP;
 	}
 
 	public void moveDown() {
-		targetAngleDeg = IntakeArmConstants.ARM_DOWN_ANGLE_DEG;
+		targetAngleDeg = MathUtil.clamp(
+				IntakeArmConstants.ARM_DOWN_ANGLE_DEG,
+				ARM_MIN_ANGLE_DEG + IntakeArmConstants.ARM_SOFT_LIMIT_BUFFER_DEG,
+				ARM_MAX_ANGLE_DEG - IntakeArmConstants.ARM_SOFT_LIMIT_BUFFER_DEG);
 		state = IntakeArmState.MOVING_DOWN;
 	}
 
@@ -52,8 +62,8 @@ public class IntakeArm extends SubsystemBase {
 				* Math.signum(IntakeArmConstants.ARM_DOWN_ANGLE_DEG - IntakeArmConstants.ARM_UP_ANGLE_DEG);
 		targetAngleDeg = MathUtil.clamp(
 				targetAngleDeg - signedStep,
-				ARM_MIN_ANGLE_DEG,
-				ARM_MAX_ANGLE_DEG);
+				ARM_MIN_ANGLE_DEG + IntakeArmConstants.ARM_SOFT_LIMIT_BUFFER_DEG,
+				ARM_MAX_ANGLE_DEG - IntakeArmConstants.ARM_SOFT_LIMIT_BUFFER_DEG);
 		state = IntakeArmState.MOVING_UP;
 	}
 
@@ -62,14 +72,41 @@ public class IntakeArm extends SubsystemBase {
 				* Math.signum(IntakeArmConstants.ARM_DOWN_ANGLE_DEG - IntakeArmConstants.ARM_UP_ANGLE_DEG);
 		targetAngleDeg = MathUtil.clamp(
 				targetAngleDeg + signedStep,
-				ARM_MIN_ANGLE_DEG,
-				ARM_MAX_ANGLE_DEG);
+				ARM_MIN_ANGLE_DEG + IntakeArmConstants.ARM_SOFT_LIMIT_BUFFER_DEG,
+				ARM_MAX_ANGLE_DEG - IntakeArmConstants.ARM_SOFT_LIMIT_BUFFER_DEG);
 		state = IntakeArmState.MOVING_DOWN;
 	}
 
 	public void stop() {
 		state = IntakeArmState.IDLE;
 		io.stop();
+	}
+
+	private void setManualState(double outputPercent) {
+		state = IntakeArmState.MANUAL;
+		io.setManualOutputPercent(outputPercent);
+	}
+
+	public void manualUp() {
+		if (inputs.connectedEncoder) {
+			if (inputs.absoluteAngleDeg >= (ARM_MAX_ANGLE_DEG - IntakeArmConstants.ARM_SOFT_LIMIT_BUFFER_DEG)) {
+				io.stop();
+				state = IntakeArmState.IDLE;
+				return;
+			}
+		}
+		setManualState(IntakeArmConstants.ARM_MANUAL_OUTPUT_PERCENT);
+	}
+
+	public void manualDown() {
+		if (inputs.connectedEncoder) {
+			if (inputs.absoluteAngleDeg <= (ARM_MIN_ANGLE_DEG + IntakeArmConstants.ARM_SOFT_LIMIT_BUFFER_DEG)) {
+				io.stop();
+				state = IntakeArmState.IDLE;
+				return;
+			}
+		}
+		setManualState(-IntakeArmConstants.ARM_MANUAL_OUTPUT_PERCENT);
 	}
 
 	public Command moveUpCommand() {
@@ -81,11 +118,15 @@ public class IntakeArm extends SubsystemBase {
 	}
 
 	public Command jogUpCommand() {
-		return Commands.run(this::jogUpStep, this);
+		return IntakeArmConstants.ARM_TUNING_MODE
+				? Commands.run(this::manualUp, this)
+				: Commands.run(this::jogUpStep, this);
 	}
 
 	public Command jogDownCommand() {
-		return Commands.run(this::jogDownStep, this);
+		return IntakeArmConstants.ARM_TUNING_MODE
+				? Commands.run(this::manualDown, this)
+				: Commands.run(this::jogDownStep, this);
 	}
 
 	@AutoLogOutput(key = "IntakeArm/AtTarget")
@@ -110,6 +151,7 @@ public class IntakeArm extends SubsystemBase {
 
 		switch (state) {
 			case IDLE -> io.stop();
+			case MANUAL -> { }
 			case MOVING_UP, MOVING_DOWN -> {
 				io.setTargetAngleDeg(targetAngleDeg);
 				if (atTarget()) {
@@ -124,5 +166,7 @@ public class IntakeArm extends SubsystemBase {
 		Logger.recordOutput("Tuning/IntakeArm/AbsRotRaw", inputs.encoderAbsoluteRot);
 		Logger.recordOutput("Tuning/IntakeArm/AbsDegRaw", inputs.encoderAbsoluteDeg);
 		Logger.recordOutput("Tuning/IntakeArm/AbsDegAdjusted", inputs.absoluteAngleDeg);
+		Logger.recordOutput("Tuning/IntakeArm/ArmMinAngleDeg", ARM_MIN_ANGLE_DEG);
+		Logger.recordOutput("Tuning/IntakeArm/ArmMaxAngleDeg", ARM_MAX_ANGLE_DEG);
 	}
 }

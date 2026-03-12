@@ -42,7 +42,7 @@ import org.littletonrobotics.junction.Logger;
 public class AkitDriveCommands {
 	private static final double DEADBAND = 0.1;
 	private static final double ROTATION_DEADBAND = 0.05; // Smaller deadband for rotation
-	private static final double SPEED_SCALE = 0.3; // Scale down max speed (0.3 = 30% of max speed)
+	private static final double SPEED_SCALE = 0.25; // Scale down max speed (0.25 = 25% of max speed)
 	private static final double ANGLE_KP = 5.0;
 	private static final double ANGLE_KD = 0.4;
 	private static final double ANGLE_MAX_VELOCITY = 8.0;
@@ -158,7 +158,7 @@ public class AkitDriveCommands {
 			DoubleSupplier omegaSupplier,
 			Supplier<Boolean> useFieldRelative,
 			Supplier<Boolean> aimButton,
-			Translation2d aimTarget) {
+			Supplier<Translation2d> aimTargetSupplier) {
 		ProfiledPIDController aimController = new ProfiledPIDController(
 				AIM_KP,
 				0.0,
@@ -182,6 +182,7 @@ public class AkitDriveCommands {
 					double translationScale = 1.0;
 					boolean aiming = aimButton.get();
 					if (aiming) {
+						Translation2d aimTarget = aimTargetSupplier.get();
 						// Aim mode: opposite side (back) faces target, ignore right stick
 						Pose2d pose = drive.getPose();
 						Rotation2d angleToTarget = aimTarget.minus(pose.getTranslation()).getAngle().plus(Rotation2d.k180deg);

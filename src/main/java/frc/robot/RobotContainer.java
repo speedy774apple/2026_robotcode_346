@@ -8,11 +8,14 @@ import com.pathplanner.lib.auto.NamedCommands;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.JoystickButton;
+import edu.wpi.first.wpilibj2.command.button.POVButton;
 
 import frc.robot.Constants;
 import frc.robot.commands.AkitDriveCommands;
@@ -35,6 +38,7 @@ import frc.robot.subsystems.intakearm.IntakeArmIO;
 import frc.robot.subsystems.intakearm.IntakeArmIOReal;
 import frc.robot.subsystems.intakearm.IntakeArmIOSim;
 import frc.robot.subsystems.shooter.Shooter;
+import frc.robot.subsystems.shooter.ShooterConstants;
 import frc.robot.subsystems.shooter.ShooterIO;
 import frc.robot.subsystems.shooter.ShooterIOReal;
 import frc.robot.subsystems.shooter.ShooterIOSim;
@@ -44,6 +48,8 @@ public class RobotContainer {
 	private static final boolean DRIVE_ENABLED = true;
 	private static final double AUTO_INTAKE_EVENT_SECONDS = 5.0;
 	private static final double AUTO_SHOOT_EVENT_SECONDS = 5.0;
+	private static final double SHOOT_STAGE1_SECONDS = 0.5;
+	private static final double SHOOT_STAGE2_SECONDS = 0.5;
 
 	private final Drive drive;
 	private final VisionLocalizer vision;
@@ -53,6 +59,27 @@ public class RobotContainer {
 	private final climb climbSubsystem;
 
 	private final CommandXboxController controller = new CommandXboxController(0);
+	private final Joystick operatorControl = new Joystick(Constants.OperatorConstants.OPERATOR_CONTROLLER_PORT);
+
+	public final JoystickButton BUTTON_1 = new JoystickButton(operatorControl, 1);
+	public final JoystickButton BUTTON_2 = new JoystickButton(operatorControl, 2);
+	public final JoystickButton BUTTON_3 = new JoystickButton(operatorControl, 3);
+	public final JoystickButton BUTTON_4 = new JoystickButton(operatorControl, 4);
+	public final JoystickButton BUTTON_5 = new JoystickButton(operatorControl, 5);
+	public final JoystickButton BUTTON_6 = new JoystickButton(operatorControl, 6);
+	public final JoystickButton BUTTON_7 = new JoystickButton(operatorControl, 7);
+	public final JoystickButton BUTTON_8 = new JoystickButton(operatorControl, 8);
+	public final JoystickButton BUTTON_9 = new JoystickButton(operatorControl, 9);
+	public final JoystickButton BUTTON_10 = new JoystickButton(operatorControl, 10);
+	public final JoystickButton BUTTON_11 = new JoystickButton(operatorControl, 11);
+	public final JoystickButton BUTTON_12 = new JoystickButton(operatorControl, 12);
+	public final JoystickButton BUTTON_13 = new JoystickButton(operatorControl, 13);
+	public final JoystickButton BUTTON_14 = new JoystickButton(operatorControl, 14);
+	public final JoystickButton BUTTON_15 = new JoystickButton(operatorControl, 15);
+	public final JoystickButton BUTTON_16 = new JoystickButton(operatorControl, 16);
+
+	private final POVButton operatorPovUp = new POVButton(operatorControl, 0);
+	private final POVButton operatorPovDown = new POVButton(operatorControl, 180);
 
 	private final LoggedDashboardChooser<Command> autoChooser;
 
@@ -173,24 +200,48 @@ public class RobotContainer {
 			return new VisionLocalizer(
 					drive::addVisionMeasurement,
 					drive::getPose,
-					// FL camera commented out it is not installed in irl
-					// new VisionIOPhotonReal(VisionConstants.cameraNames[0], VisionConstants.vehicleToCameras[0]),
+					new VisionIOPhotonReal(VisionConstants.cameraNames[0], VisionConstants.vehicleToCameras[0]),
 					new VisionIOPhotonReal(VisionConstants.cameraNames[1], VisionConstants.vehicleToCameras[1]),
-					new VisionIOPhotonReal(VisionConstants.cameraNames[2], VisionConstants.vehicleToCameras[2]),
-					new VisionIOPhotonReal(VisionConstants.cameraNames[3], VisionConstants.vehicleToCameras[3]));
+					new VisionIOPhotonReal(VisionConstants.cameraNames[2], VisionConstants.vehicleToCameras[2]));
 		} else {
 			return new VisionLocalizer(
 					drive::addVisionMeasurement,
 					drive::getPose,
-					// FL camera commented out  not installed IRL
-					// new VisionIOPhotonSim(VisionConstants.cameraNames[0], VisionConstants.vehicleToCameras[0], drive::getPose),
+					new VisionIOPhotonSim(VisionConstants.cameraNames[0], VisionConstants.vehicleToCameras[0], drive::getPose),
 					new VisionIOPhotonSim(VisionConstants.cameraNames[1], VisionConstants.vehicleToCameras[1], drive::getPose),
-					new VisionIOPhotonSim(VisionConstants.cameraNames[2], VisionConstants.vehicleToCameras[2], drive::getPose),
-					new VisionIOPhotonSim(VisionConstants.cameraNames[3], VisionConstants.vehicleToCameras[3], drive::getPose));
+					new VisionIOPhotonSim(VisionConstants.cameraNames[2], VisionConstants.vehicleToCameras[2], drive::getPose));
 		}
 	}
 
-	private static final Translation2d AIM_TARGET = new Translation2d(11.907, 4.030);
+	private static final Translation2d BLUE_AIM_TARGET = new Translation2d(4.633, 4.030);
+	private static final Translation2d RED_AIM_TARGET = new Translation2d(11.917, 4.030);
+
+	private Translation2d getAimTargetForAlliance() {
+		var alliance = DriverStation.getAlliance();
+		if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
+			return RED_AIM_TARGET;
+		}
+		return BLUE_AIM_TARGET;
+	}
+	private Command stagedShootCommand() {
+		return Commands.sequence(
+				Commands.run(
+						() -> shooter.setTargets(
+								ShooterConstants.TALON_2_INCH_TARGET_RPM,
+								ShooterConstants.TALON_3_INCH_TARGET_RPM,
+								0.0,
+								0.0),
+						shooter).withTimeout(SHOOT_STAGE1_SECONDS),
+				Commands.run(
+						() -> shooter.setTargets(
+								ShooterConstants.TALON_2_INCH_TARGET_RPM,
+								ShooterConstants.TALON_3_INCH_TARGET_RPM,
+								ShooterConstants.NEO_550_SPEED_PERCENT,
+								ShooterConstants.ROLLER_SPEED_PERCENT),
+						shooter).withTimeout(SHOOT_STAGE2_SECONDS),
+				shooter.runShoot())
+				.finallyDo(interrupted -> shooter.stop());
+	}
 
 	private void configureButtonBindings() {
 		if (DRIVE_ENABLED) {
@@ -202,8 +253,8 @@ public class RobotContainer {
 							() -> controlsInverted ? -controller.getLeftX() : controller.getLeftX(),
 							() -> controlsInverted ? controller.getRightX() : -controller.getRightX(),
 							() -> useFieldRelative,
-							() -> false,
-							AIM_TARGET));
+							() -> controller.getHID().getLeftTriggerAxis() > 0.5,
+							this::getAimTargetForAlliance));
 		} else {
 			
 			drive.setDefaultCommand(Commands.run(drive::stop, drive));
@@ -245,23 +296,20 @@ public class RobotContainer {
 						drive)
 						.ignoringDisable(true));
 
-		// Reset pose
-		controller.rightBumper().onTrue(
-				Commands.runOnce(
-						() -> drive.setPose(
-								new Pose2d(drive.getPose().getTranslation(), new Rotation2d())),
-						drive)
-						.ignoringDisable(true));
+		
+		// Reset pose removed from right bumper (now used for shoot)
 
-		// Shooter: hold Y to run intake wheels, stop on release
+		
 		controller.y()
 				.whileTrue(shooter.runShoot())
 				.onFalse(shooter.stopCoralIntake());
 
 		
-		controller.leftBumper()
-				.whileTrue(intake.runIntake())
-				.onFalse(intake.stopIntake());
+		// Left trigger now used for aim (see default drive command)
+
+		controller.rightBumper()
+				.whileTrue(stagedShootCommand())
+				.onFalse(shooter.stopCoralIntake());
 
 		
 		controller.povDown()
@@ -270,9 +318,27 @@ public class RobotContainer {
 		controller.povUp()
 				.whileTrue(intakeArm.jogUpCommand())
 				.onFalse(Commands.runOnce(intakeArm::stop, intakeArm));
+
+		controller.povRight().onTrue(climbSubsystem.moveOneOutputRevolutionCommand());
+		controller.povLeft().onTrue(climbSubsystem.moveOneOutputRevolutionDownCommand());
 		
-		controller.rightTrigger().onTrue(climbSubsystem.moveOneOutputRevolutionCommand()); 
-		controller.leftTrigger().onTrue(climbSubsystem.moveOneOutputRevolutionDownCommand());
+		
+
+		
+		BUTTON_1.whileTrue(intake.runIntake()).onFalse(intake.stopIntake());
+		BUTTON_2.whileTrue(stagedShootCommand()).onFalse(shooter.stopCoralIntake());
+		BUTTON_3.onTrue(climbSubsystem.moveOneOutputRevolutionCommand());
+		BUTTON_4.onTrue(climbSubsystem.moveOneOutputRevolutionDownCommand());
+
+		operatorPovDown
+				.whileTrue(intakeArm.jogDownCommand())
+				.onFalse(Commands.runOnce(intakeArm::stop, intakeArm));
+		operatorPovUp
+				.whileTrue(intakeArm.jogUpCommand())
+				.onFalse(Commands.runOnce(intakeArm::stop, intakeArm));
+
+		new POVButton(operatorControl, 90).onTrue(climbSubsystem.moveOneOutputRevolutionCommand());
+		new POVButton(operatorControl, 270).onTrue(climbSubsystem.moveOneOutputRevolutionDownCommand());
 	}
 
 	public Command getAutonomousCommand() {

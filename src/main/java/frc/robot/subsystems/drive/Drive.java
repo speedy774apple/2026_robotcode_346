@@ -58,6 +58,8 @@ import edu.wpi.first.wpilibj.Alert;
 import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
@@ -134,6 +136,7 @@ public class Drive extends SubsystemBase {
 	private SwerveSetpoint previousSetpoint;
 
 	private final List<Pose2d> alignPositions;
+	private final Field2d field2d = new Field2d();
 
 	public Drive(
 			GyroIO gyroIO,
@@ -197,6 +200,9 @@ public class Drive extends SubsystemBase {
 						tag.pose.toPose2d().getRotation().rotateBy(Rotation2d.k180deg)));
 			}
 		}
+
+		// Publish Field2d so WPILib sim GUI shows the robot pose.
+		SmartDashboard.putData("Field", field2d);
 	}
 
 	@Override
@@ -280,6 +286,7 @@ public class Drive extends SubsystemBase {
 		Logger.recordOutput("Odometry/Robot", robotPose);
 		Logger.recordOutput("RobotPose2d", robotPose);
 		Logger.recordOutput("RobotPose3d", new Pose3d(robotPose));
+		field2d.setRobotPose(robotPose);
 	}
 
 	/**
@@ -483,8 +490,7 @@ public class Drive extends SubsystemBase {
 	}
 
 	public Pose2d findClosestNode() {
-		System.out.println("X");
-		for (int i = alignPositions.size(); i < 6; i++) {
+		for (int i = 0; i < alignPositions.size(); i++) {
 			Logger.recordOutput("Vision/ReefFaces" + i, alignPositions.get(i));
 		}
 

@@ -19,14 +19,14 @@ import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
-import frc.robot.subsystems.drive.TunerConstants;
+import frc.robot.Constants;
 
 public class ShooterIOReal implements ShooterIO {
-	private final TalonFX talon2Inch = new TalonFX(ShooterConstants.TALON_2_INCH_ID, TunerConstants.DrivetrainConstants.CANBusName);
-	private final TalonFX talon3Inch1 = new TalonFX(ShooterConstants.TALON_3_INCH_1_ID, TunerConstants.DrivetrainConstants.CANBusName);
-	private final TalonFX talon3Inch2 = new TalonFX(ShooterConstants.TALON_3_INCH_2_ID, TunerConstants.DrivetrainConstants.CANBusName);
-	private final TalonFX roller = new TalonFX(ShooterConstants.FEEDER_ROLLER_ID, TunerConstants.DrivetrainConstants.CANBusName);
-	private final TalonFXS neo550 = new TalonFXS(ShooterConstants.NEO_550_ID, TunerConstants.DrivetrainConstants.CANBusName);
+	private final TalonFX talon2Inch = new TalonFX(ShooterConstants.TALON_2_INCH_ID, Constants.SUBSYSTEMS_CAN_BUS);
+	private final TalonFX talon3Inch1 = new TalonFX(ShooterConstants.TALON_3_INCH_1_ID, Constants.SUBSYSTEMS_CAN_BUS);
+	private final TalonFX talon3Inch2 = new TalonFX(ShooterConstants.TALON_3_INCH_2_ID, Constants.SUBSYSTEMS_CAN_BUS);
+	private final TalonFX roller = new TalonFX(ShooterConstants.FEEDER_ROLLER_ID, Constants.DRIVETRAIN_CAN_BUS);
+	private final TalonFXS neo550 = new TalonFXS(ShooterConstants.NEO_550_ID, Constants.SUBSYSTEMS_CAN_BUS);
 
 	private final VelocityVoltage velReq2Inch = new VelocityVoltage(0.0).withSlot(0);
 	private final VelocityVoltage velReq3Inch1 = new VelocityVoltage(0.0).withSlot(0);
@@ -49,25 +49,36 @@ public class ShooterIOReal implements ShooterIO {
 	private final StatusSignal<Current> ampsRoller = roller.getStatorCurrent();
 
 	public ShooterIOReal() {
-		TalonFXConfiguration config = new TalonFXConfiguration();
-		config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
-		config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-		config.CurrentLimits.SupplyCurrentLimitEnable = true;
-		config.CurrentLimits.SupplyCurrentLimit = ShooterConstants.SHOOTER_SUPPLY_CURRENT_LIMIT_A;
-		config.CurrentLimits.StatorCurrentLimitEnable = true;
-		config.CurrentLimits.StatorCurrentLimit = ShooterConstants.SHOOTER_STATOR_CURRENT_LIMIT_A;
-		config.Slot0.kP = ShooterConstants.SHOOTER_KP;
-		config.Slot0.kI = ShooterConstants.SHOOTER_KI;
-		config.Slot0.kD = ShooterConstants.SHOOTER_KD;
-		config.Slot0.kV = ShooterConstants.SHOOTER_KV;
-		config.Slot0.kS = ShooterConstants.SHOOTER_KS;
-		config.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.0;
-		config.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0.0;
+		TalonFXConfiguration shooterConfig = new TalonFXConfiguration();
+		shooterConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+		shooterConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+		shooterConfig.CurrentLimits.SupplyCurrentLimitEnable = true;
+		shooterConfig.CurrentLimits.SupplyCurrentLimit = ShooterConstants.SHOOTER_SUPPLY_CURRENT_LIMIT_A;
+		shooterConfig.CurrentLimits.StatorCurrentLimitEnable = true;
+		shooterConfig.CurrentLimits.StatorCurrentLimit = ShooterConstants.SHOOTER_STATOR_CURRENT_LIMIT_A;
+		shooterConfig.Slot0.kP = ShooterConstants.SHOOTER_KP;
+		shooterConfig.Slot0.kI = ShooterConstants.SHOOTER_KI;
+		shooterConfig.Slot0.kD = ShooterConstants.SHOOTER_KD;
+		// Feedforward applied in code to make the ramp more immediate.
+		shooterConfig.Slot0.kV = 0.0;
+		shooterConfig.Slot0.kS = 0.0;
+		shooterConfig.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.0;
+		shooterConfig.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0.0;
 
-		tryUntilOk(5, () -> talon2Inch.getConfigurator().apply(config, 0.25));
-		tryUntilOk(5, () -> talon3Inch1.getConfigurator().apply(config, 0.25));
-		tryUntilOk(5, () -> talon3Inch2.getConfigurator().apply(config, 0.25));
-		tryUntilOk(5, () -> roller.getConfigurator().apply(config, 0.25));
+		TalonFXConfiguration rollerConfig = new TalonFXConfiguration();
+		rollerConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+		rollerConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+		rollerConfig.CurrentLimits.SupplyCurrentLimitEnable = true;
+		rollerConfig.CurrentLimits.SupplyCurrentLimit = ShooterConstants.SHOOTER_SUPPLY_CURRENT_LIMIT_A;
+		rollerConfig.CurrentLimits.StatorCurrentLimitEnable = true;
+		rollerConfig.CurrentLimits.StatorCurrentLimit = ShooterConstants.SHOOTER_STATOR_CURRENT_LIMIT_A;
+		rollerConfig.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.0;
+		rollerConfig.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = ShooterConstants.FEEDER_ROLLER_OPEN_LOOP_RAMP_SECONDS;
+
+		tryUntilOk(5, () -> talon2Inch.getConfigurator().apply(shooterConfig, 0.25));
+		tryUntilOk(5, () -> talon3Inch1.getConfigurator().apply(shooterConfig, 0.25));
+		tryUntilOk(5, () -> talon3Inch2.getConfigurator().apply(shooterConfig, 0.25));
+		tryUntilOk(5, () -> roller.getConfigurator().apply(rollerConfig, 0.25));
 
 		TalonFXSConfiguration neoConfig = new TalonFXSConfiguration();
 		neoConfig.Commutation.MotorArrangement = MotorArrangementValue.NEO550_JST;
@@ -83,14 +94,30 @@ public class ShooterIOReal implements ShooterIO {
 		return rpm / 60.0;
 	}
 
+	private static double calcFeedforwardVolts(double velocityRps) {
+		if (Math.abs(velocityRps) < 1e-6) {
+			return 0.0;
+		}
+		return ShooterConstants.SHOOTER_KS * Math.signum(velocityRps)
+				+ ShooterConstants.SHOOTER_KV * velocityRps;
+	}
+
 	@Override
 	public void setTargets(double twoInchRpm, double threeInchRpm, double neoPercent, double rollerPercent) {
 		double target2InchRps = rpmToRps(twoInchRpm);
 		double target3InchRps = rpmToRps(threeInchRpm);
 
-		talon2Inch.setControl(velReq2Inch.withVelocity(target2InchRps * ShooterConstants.TALON_2_INCH_DIR));
-		talon3Inch1.setControl(velReq3Inch1.withVelocity(target3InchRps * ShooterConstants.TALON_3_INCH_1_DIR));
-		talon3Inch2.setControl(velReq3Inch2.withVelocity(target3InchRps * ShooterConstants.TALON_3_INCH_2_DIR));
+		double target2InchRpsSigned = target2InchRps * ShooterConstants.TALON_2_INCH_DIR;
+		double target3Inch1RpsSigned = target3InchRps * ShooterConstants.TALON_3_INCH_1_DIR;
+		double target3Inch2RpsSigned = target3InchRps * ShooterConstants.TALON_3_INCH_2_DIR;
+
+		double ff2InchVolts = calcFeedforwardVolts(target2InchRpsSigned);
+		double ff3Inch1Volts = calcFeedforwardVolts(target3Inch1RpsSigned);
+		double ff3Inch2Volts = calcFeedforwardVolts(target3Inch2RpsSigned);
+
+		talon2Inch.setControl(velReq2Inch.withVelocity(target2InchRpsSigned).withFeedForward(ff2InchVolts));
+		talon3Inch1.setControl(velReq3Inch1.withVelocity(target3Inch1RpsSigned).withFeedForward(ff3Inch1Volts));
+		talon3Inch2.setControl(velReq3Inch2.withVelocity(target3Inch2RpsSigned).withFeedForward(ff3Inch2Volts));
 
 		neo550.set(neoPercent / 100.0);
 		double rollerOutput = (MathUtil.clamp(rollerPercent, -100.0, 100.0) / 100.0) * ShooterConstants.FEEDER_ROLLER_DIR;

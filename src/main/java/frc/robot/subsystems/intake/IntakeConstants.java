@@ -9,7 +9,7 @@ public final class IntakeConstants {
 
 	public static final double INTAKE_SPEED_PERCENT = 75.0;
 	public static final double INTAKE_DIRECTION = 1.0;
-	// Time for open loop soft start
+	// Time for open loop soft start (handled by motor controller)
 	public static final double INTAKE_OPEN_LOOP_RAMP_SECONDS = 0.65;
 
 	public static final double INTAKE_SUPPLY_CURRENT_LIMIT_A = 40.0;

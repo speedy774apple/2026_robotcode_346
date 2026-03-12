@@ -1,5 +1,5 @@
 {
- "name":"TopDoubleShoot",
+ "name":"BottomCycle",
  "version":2,
  "type":"Swerve",
  "variables":{
@@ -76,7 +76,7 @@
  },
  "generationFeatures":[],
  "codegen":{
-  "root":null,
+  "root":"..\\C:\\Users\\User\\Downloads\\2026_robotcode_346\\src\\main\\deploy\\choreo",
   "genVars":true,
   "genTrajData":true,
   "useChoreoLib":true

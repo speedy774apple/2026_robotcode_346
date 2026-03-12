@@ -17,38 +17,38 @@ public final class VisionConstants {
     };
 
     public static final String[] cameraNames = {
-            "FL",
             "FR",
             "BL",
             "BR"
     };
 
     // All positions in meters, angles in radians
-   public static final Transform3d[] vehicleToCameras = {
-    // Front Left (FL): Facing 45° Left, Tilted 15° UP
-   new Transform3d(new Translation3d(0.298, 0.286, 0.175),
-        new Rotation3d(0, Units.degreesToRadians(15), Units.degreesToRadians(45))),
+    public static final Transform3d[] vehicleToCameras = {
 
-    // Front Right (FR): Facing 45° Right, Tilted 15° UP
-    new Transform3d(new Translation3d(0.298, -0.286, 0.175),
-        new Rotation3d(0, Units.degreesToRadians(15), Units.degreesToRadians(-45))),
+            // Front (Top Camera) - FR
+            new Transform3d(
+                    new Translation3d(-0.2832, -0.1751, 0.6733),
+                    new Rotation3d(0, Units.degreesToRadians(15), Units.degreesToRadians(0))),
 
-    // Back Left (BL): Facing 135° (Back-Left), Tilted 15° UP
-    new Transform3d(new Translation3d(-0.298, 0.286, 0.175),
-        new Rotation3d(0, Units.degreesToRadians(15), Units.degreesToRadians(135))),
+            // Back Left - BL
+            new Transform3d(
+                    new Translation3d(-0.2813, -0.2747, 0.1616),
+                    new Rotation3d(0, Units.degreesToRadians(15), Units.degreesToRadians(45))),
 
-    // Back Right (BR): Facing -135° (Back-Right), Tilted 15° UP
-    new Transform3d(new Translation3d(-0.298, -0.286, 0.175),
-        new Rotation3d(0, Units.degreesToRadians(15), Units.degreesToRadians(-135)))
-};
+            // Back Right - BR
+            new Transform3d(
+                    new Translation3d(0.2811, -0.2749, 0.1616),
+                    new Rotation3d(0, Units.degreesToRadians(15), Units.degreesToRadians(-45)))
+    };
+
 
 
     
-public static final List<CameraParams> cameras = List.of(
-    new CameraParams("FR", vehicleToCameras[1]),
-    new CameraParams("BL", vehicleToCameras[2]),
-    new CameraParams("BR", vehicleToCameras[3])
-);
+    public static final List<CameraParams> cameras = List.of(
+            new CameraParams(cameraNames[0], vehicleToCameras[0]),
+            new CameraParams(cameraNames[1], vehicleToCameras[1]),
+            new CameraParams(cameraNames[2], vehicleToCameras[2])
+    );
 
     // Field Layout for visual localization and map generation
     public static AprilTagFieldLayout aprilTagLayout = AprilTagFieldLayout

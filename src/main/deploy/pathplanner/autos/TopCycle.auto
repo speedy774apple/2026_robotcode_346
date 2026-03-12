@@ -5,13 +5,19 @@
     "data": {
       "commands": [
         {
+          "type": "path",
+          "data": {
+            "pathName": "TopCycle_1"
+          }
+        },
+        {
           "type": "parallel",
           "data": {
             "commands": [
               {
                 "type": "path",
                 "data": {
-                  "pathName": "DepotOutpost1"
+                  "pathName": "TopCycle_2"
                 }
               },
               {
@@ -24,6 +30,18 @@
           }
         },
         {
+          "type": "path",
+          "data": {
+            "pathName": "TopCycle_3"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "TopCycle_4"
+          }
+        },
+        {
           "type": "named",
           "data": {
             "name": "Shoot"
@@ -32,31 +50,38 @@
         {
           "type": "path",
           "data": {
-            "pathName": "DepotOutpost2"
+            "pathName": "TopCycle_5"
           }
         },
         {
-          "type": "named",
+          "type": "parallel",
           "data": {
-            "name": "Intake"
+            "commands": [
+              {
+                "type": "named",
+                "data": {
+                  "name": "Intake"
+                }
+              },
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "TopCycle_6"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "TopCycle_7"
           }
         },
         {
           "type": "named",
           "data": {
             "name": "Shoot"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "DepotOutpost3"
-          }
-        },
-        {
-          "type": "named",
-          "data": {
-            "name": "Climb"
           }
         }
       ]

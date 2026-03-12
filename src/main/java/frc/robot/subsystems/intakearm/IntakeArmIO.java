@@ -25,4 +25,7 @@ public interface IntakeArmIO {
 
 	public default void stop() {
 	}
+
+	public default void setManualOutputPercent(double percent) {
+	}
 }

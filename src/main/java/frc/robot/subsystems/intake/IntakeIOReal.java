@@ -14,10 +14,10 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
-import frc.robot.subsystems.drive.TunerConstants;
+import frc.robot.Constants;
 
 public class IntakeIOReal implements IntakeIO {
-	private final TalonFX intakeMotor = new TalonFX(IntakeConstants.INTAKE_MOTOR_ID, TunerConstants.DrivetrainConstants.CANBusName);
+	private final TalonFX intakeMotor = new TalonFX(IntakeConstants.INTAKE_MOTOR_ID, Constants.DRIVETRAIN_CAN_BUS);
 
 	private final DutyCycleOut dutyCycleOut = new DutyCycleOut(0.0);
 	private final NeutralOut neutral = new NeutralOut();

@@ -17,10 +17,10 @@ import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.DriverStation;
-import frc.robot.subsystems.drive.TunerConstants;
+import frc.robot.Constants;
 
 public class ClimbIOReal implements ClimbIO {
-	private final TalonFX climbMotor = new TalonFX(ClimbConstants.CLIMB_MOTOR_ID, TunerConstants.DrivetrainConstants.CANBusName);
+	private final TalonFX climbMotor = new TalonFX(ClimbConstants.CLIMB_MOTOR_ID, Constants.SUBSYSTEMS_CAN_BUS);
 	private final PositionVoltage positionRequest = new PositionVoltage(0.0).withSlot(0);
 	private final NeutralOut neutralRequest = new NeutralOut();
 

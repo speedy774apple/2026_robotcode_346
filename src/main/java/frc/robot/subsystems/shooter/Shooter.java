@@ -10,8 +10,6 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class Shooter extends SubsystemBase {
-	private static final double FIXED_SHOOT_RPM = 6000.0;
-
 	private final ShooterIO io;
 	private final ShooterIOInputsAutoLogged inputs = new ShooterIOInputsAutoLogged();
 
@@ -66,8 +64,8 @@ public class Shooter extends SubsystemBase {
 	public Command runShoot() {
 		return Commands.run(
 				() -> setTargets(
-						FIXED_SHOOT_RPM,
-						FIXED_SHOOT_RPM,
+						ShooterConstants.TALON_2_INCH_TARGET_RPM,
+						ShooterConstants.TALON_3_INCH_TARGET_RPM,
 						ShooterConstants.NEO_550_SPEED_PERCENT,
 						ShooterConstants.ROLLER_SPEED_PERCENT),
 				this);
@@ -77,8 +75,8 @@ public class Shooter extends SubsystemBase {
 		autoDistanceFeet = distanceFeet;
 		autoThreeInchPercent = 0.0;
 		setTargets(
-				FIXED_SHOOT_RPM,
-				FIXED_SHOOT_RPM,
+				ShooterConstants.TALON_2_INCH_TARGET_RPM,
+				ShooterConstants.TALON_3_INCH_TARGET_RPM,
 				ShooterConstants.NEO_550_SPEED_PERCENT,
 				ShooterConstants.ROLLER_SPEED_PERCENT);
 	}

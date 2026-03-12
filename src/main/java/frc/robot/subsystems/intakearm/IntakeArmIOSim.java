@@ -38,4 +38,11 @@ public class IntakeArmIOSim implements IntakeArmIO {
 	public void setManualOutputPercent(double percent) {
 		manualOutputPercent = Math.max(-100.0, Math.min(100.0, percent));
 	}
+
+	@Override
+	public void stop() {
+		// Stop manual motion and freeze the target at the current simulated angle.
+		manualOutputPercent = 0.0;
+		targetAngleDeg = simAngleDeg;
+	}
 }

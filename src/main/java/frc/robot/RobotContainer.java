@@ -10,6 +10,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -28,6 +29,7 @@ import frc.robot.subsystems.drive.ModuleIOTalonFX;
 import frc.robot.subsystems.drive.TunerConstants;
 import frc.robot.subsystems.climb.ClimbIO;
 import frc.robot.subsystems.climb.ClimbIOReal;
+import frc.robot.subsystems.climb.ClimbIOSim;
 import frc.robot.subsystems.climb.climb;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.IntakeIO;
@@ -144,6 +146,7 @@ public class RobotContainer {
 
 		ClimbIO climbIO = switch (Constants.currentMode) {
 			case REAL -> new ClimbIOReal();
+			case SIM -> new ClimbIOSim();
 			default -> new ClimbIO() {};
 		};
 		climbSubsystem = new climb(climbIO);
@@ -217,6 +220,10 @@ public class RobotContainer {
 	private static final Translation2d RED_AIM_TARGET = new Translation2d(11.917, 4.030);
 
 	private Translation2d getAimTargetForAlliance() {
+		// Keep sim on blue for predictable testing (sim DS alliance is often unset/wrong).
+		if (RobotBase.isSimulation()) {
+			return BLUE_AIM_TARGET;
+		}
 		var alliance = DriverStation.getAlliance();
 		if (alliance.isPresent() && alliance.get() == DriverStation.Alliance.Red) {
 			return RED_AIM_TARGET;
@@ -251,7 +258,16 @@ public class RobotContainer {
 							drive,
 							() -> controlsInverted ? -controller.getLeftY() : controller.getLeftY(),
 							() -> controlsInverted ? -controller.getLeftX() : controller.getLeftX(),
-							() -> controlsInverted ? controller.getRightX() : -controller.getRightX(),
+							() -> {
+								double rot = 0.0;
+								if (controller.getHID().getLeftBumper()) {
+									rot -= 1.0;
+								}
+								if (controller.getHID().getRightBumper()) {
+									rot += 1.0;
+								}
+								return controlsInverted ? -rot : rot;
+							},
 							() -> useFieldRelative,
 							() -> controller.getHID().getLeftTriggerAxis() > 0.5,
 							this::getAimTargetForAlliance));
@@ -301,13 +317,12 @@ public class RobotContainer {
 
 		
 		controller.y()
-				.whileTrue(shooter.runShoot())
-				.onFalse(shooter.stopCoralIntake());
+				.whileTrue(intake.runIntake())
+				.onFalse(intake.stopIntake());
 
-		
-		// Left trigger now used for aim (see default drive command)
+		// Left trigger used for aim (see default drive command)
 
-		controller.rightBumper()
+		controller.rightTrigger()
 				.whileTrue(stagedShootCommand())
 				.onFalse(shooter.stopCoralIntake());
 

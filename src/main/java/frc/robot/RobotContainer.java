@@ -58,28 +58,28 @@ public class RobotContainer {
 	private final IntakeArm intakeArm;
 	private final climb climbSubsystem;
 
-	private final CommandXboxController controller = new CommandXboxController(0);
-	private final Joystick operatorControl = new Joystick(Constants.OperatorConstants.OPERATOR_CONTROLLER_PORT);
+	private final CommandXboxController controller;
+	private final Joystick operatorControl;
 
-	public final JoystickButton BUTTON_1 = new JoystickButton(operatorControl, 1);
-	public final JoystickButton BUTTON_2 = new JoystickButton(operatorControl, 2);
-	public final JoystickButton BUTTON_3 = new JoystickButton(operatorControl, 3);
-	public final JoystickButton BUTTON_4 = new JoystickButton(operatorControl, 4);
-	public final JoystickButton BUTTON_5 = new JoystickButton(operatorControl, 5);
-	public final JoystickButton BUTTON_6 = new JoystickButton(operatorControl, 6);
-	public final JoystickButton BUTTON_7 = new JoystickButton(operatorControl, 7);
-	public final JoystickButton BUTTON_8 = new JoystickButton(operatorControl, 8);
-	public final JoystickButton BUTTON_9 = new JoystickButton(operatorControl, 9);
-	public final JoystickButton BUTTON_10 = new JoystickButton(operatorControl, 10);
-	public final JoystickButton BUTTON_11 = new JoystickButton(operatorControl, 11);
-	public final JoystickButton BUTTON_12 = new JoystickButton(operatorControl, 12);
-	public final JoystickButton BUTTON_13 = new JoystickButton(operatorControl, 13);
-	public final JoystickButton BUTTON_14 = new JoystickButton(operatorControl, 14);
-	public final JoystickButton BUTTON_15 = new JoystickButton(operatorControl, 15);
-	public final JoystickButton BUTTON_16 = new JoystickButton(operatorControl, 16);
+	public final JoystickButton BUTTON_1;
+	public final JoystickButton BUTTON_2;
+	public final JoystickButton BUTTON_3;
+	public final JoystickButton BUTTON_4;
+	public final JoystickButton BUTTON_5;
+	public final JoystickButton BUTTON_6;
+	public final JoystickButton BUTTON_7;
+	public final JoystickButton BUTTON_8;
+	public final JoystickButton BUTTON_9;
+	public final JoystickButton BUTTON_10;
+	public final JoystickButton BUTTON_11;
+	public final JoystickButton BUTTON_12;
+	public final JoystickButton BUTTON_13;
+	public final JoystickButton BUTTON_14;
+	public final JoystickButton BUTTON_15;
+	public final JoystickButton BUTTON_16;
 
-	private final POVButton operatorPovUp = new POVButton(operatorControl, 0);
-	private final POVButton operatorPovDown = new POVButton(operatorControl, 180);
+	private final POVButton operatorPovUp;
+	private final POVButton operatorPovDown;
 
 	private final LoggedDashboardChooser<Command> autoChooser;
 
@@ -89,6 +89,34 @@ public class RobotContainer {
 	private boolean controlsInverted = false;
 
 	public RobotContainer() {
+		int driverPort = selectDriverControllerPort();
+		controller = new CommandXboxController(driverPort);
+
+		int operatorPort = Constants.OperatorConstants.OPERATOR_CONTROLLER_PORT;
+		if (Constants.currentMode == Constants.Mode.SIM && operatorPort == driverPort) {
+			operatorPort = (driverPort == 0) ? 1 : 0;
+		}
+		operatorControl = new Joystick(operatorPort);
+
+		BUTTON_1 = new JoystickButton(operatorControl, 1);
+		BUTTON_2 = new JoystickButton(operatorControl, 2);
+		BUTTON_3 = new JoystickButton(operatorControl, 3);
+		BUTTON_4 = new JoystickButton(operatorControl, 4);
+		BUTTON_5 = new JoystickButton(operatorControl, 5);
+		BUTTON_6 = new JoystickButton(operatorControl, 6);
+		BUTTON_7 = new JoystickButton(operatorControl, 7);
+		BUTTON_8 = new JoystickButton(operatorControl, 8);
+		BUTTON_9 = new JoystickButton(operatorControl, 9);
+		BUTTON_10 = new JoystickButton(operatorControl, 10);
+		BUTTON_11 = new JoystickButton(operatorControl, 11);
+		BUTTON_12 = new JoystickButton(operatorControl, 12);
+		BUTTON_13 = new JoystickButton(operatorControl, 13);
+		BUTTON_14 = new JoystickButton(operatorControl, 14);
+		BUTTON_15 = new JoystickButton(operatorControl, 15);
+		BUTTON_16 = new JoystickButton(operatorControl, 16);
+
+		operatorPovUp = new POVButton(operatorControl, 0);
+		operatorPovDown = new POVButton(operatorControl, 180);
 		
 		switch (Constants.currentMode) {
 			case REAL:
@@ -153,6 +181,15 @@ public class RobotContainer {
 		autoChooser = createAutoChooserSafe();
 
 		configureButtonBindings();
+	}
+
+	private static int selectDriverControllerPort() {
+		if (Constants.currentMode != Constants.Mode.SIM) {
+			return 0;
+		}
+		// In sim, the keyboard joystick is typically port 1 (see simgui-ds.json).
+		// Prefer port 1 so keyboard input works without relying on DS connection timing.
+		return 1;
 	}
 
 	private LoggedDashboardChooser<Command> createAutoChooserSafe() {

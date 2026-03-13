@@ -40,17 +40,18 @@ import java.util.function.Supplier;
 import org.littletonrobotics.junction.Logger;
 
 public class AkitDriveCommands {
-	private static final double DEADBAND = 0.1;
-	private static final double ROTATION_DEADBAND = 0.05; // Smaller deadband for rotation
-	private static final double SPEED_SCALE = 0.25; // Scale down max speed (0.25 = 25% of max speed)
+private static final double DEADBAND = 0.1;
+private static final double ROTATION_DEADBAND = 0.05; // Smaller deadband for rotation
+private static final double SPEED_SCALE = 0.65; // Scale down max speed (0.25 = 25% of max speed)
+private static final double ROTATION_SCALE = 0.25; // Scale down max rotation (0.25 = 25% of max rotation)
 	private static final double ANGLE_KP = 5.0;
 	private static final double ANGLE_KD = 0.4;
 	private static final double ANGLE_MAX_VELOCITY = 8.0;
 	private static final double ANGLE_MAX_ACCELERATION = 20.0;
 	private static final double FF_START_DELAY = 2.0; // Secs
-	private static final double FF_RAMP_RATE = 0.1; // Volts/Sec
-	private static final double WHEEL_RADIUS_MAX_VELOCITY = 0.25; // Rad/Sec
-	private static final double WHEEL_RADIUS_RAMP_RATE = 0.05; // Rad/Sec^2
+	private static final double FF_RAMP_RATE = 0.1; 
+	private static final double WHEEL_RADIUS_MAX_VELOCITY = 0.25; 
+	private static final double WHEEL_RADIUS_RAMP_RATE = 0.05; 
 
 	private AkitDriveCommands() {
 	}
@@ -102,7 +103,7 @@ public class AkitDriveCommands {
 					ChassisSpeeds speeds = new ChassisSpeeds(
 							linearVelocity.getX() * drive.getMaxLinearSpeedMetersPerSec() * SPEED_SCALE,
 							linearVelocity.getY() * drive.getMaxLinearSpeedMetersPerSec() * SPEED_SCALE,
-							omega * drive.getMaxAngularSpeedRadPerSec() * SPEED_SCALE);
+							omega * drive.getMaxAngularSpeedRadPerSec() * ROTATION_SCALE);
 
 					// Convert to field-relative if requested
 					ChassisSpeeds finalSpeeds = speeds;
@@ -183,9 +184,9 @@ public class AkitDriveCommands {
 					boolean aiming = aimButton.get();
 					if (aiming) {
 						Translation2d aimTarget = aimTargetSupplier.get();
-						// Aim mode: opposite side (back) faces target, ignore right stick
+						// Aim mode: front faces target, ignore right stick
 						Pose2d pose = drive.getPose();
-						Rotation2d angleToTarget = aimTarget.minus(pose.getTranslation()).getAngle().plus(Rotation2d.k180deg);
+						Rotation2d angleToTarget = aimTarget.minus(pose.getTranslation()).getAngle();
 						double measurementRad = drive.getRotation().getRadians();
 						double setpointRad = angleToTarget.getRadians();
 						double errorRad = angleToTarget.minus(drive.getRotation()).getRadians();
@@ -228,7 +229,7 @@ public class AkitDriveCommands {
 						double rawOmega = omegaSupplier.getAsDouble();
 						double omega = MathUtil.applyDeadband(rawOmega, ROTATION_DEADBAND);
 						omega = Math.copySign(omega * omega, omega);
-						omegaRadPerSec = omega * drive.getMaxAngularSpeedRadPerSec() * SPEED_SCALE;
+						omegaRadPerSec = omega * drive.getMaxAngularSpeedRadPerSec() * ROTATION_SCALE;
 					}
 					wasAiming[0] = aiming;
 

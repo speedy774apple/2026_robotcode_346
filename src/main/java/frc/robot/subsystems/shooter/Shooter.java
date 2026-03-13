@@ -18,7 +18,8 @@ public class Shooter extends SubsystemBase {
 	private double targetNeoPercent = 0.0;
 	private double targetRollerPercent = 0.0;
 	private double autoDistanceFeet = 0.0;
-	private double autoThreeInchPercent = 0.0;
+	private double autoTwoInchRpm = 0.0;
+	private double autoThreeInchRpm = 0.0;
 	private boolean enabled = false;
 
 	public Shooter(ShooterIO io) {
@@ -73,10 +74,11 @@ public class Shooter extends SubsystemBase {
 
 	public void setAutoTargetsFromDistanceFeet(double distanceFeet) {
 		autoDistanceFeet = distanceFeet;
-		autoThreeInchPercent = 0.0;
+		autoTwoInchRpm = ShooterAutoMap.getTwoInchRpm(distanceFeet);
+		autoThreeInchRpm = ShooterAutoMap.getThreeInchRpm(distanceFeet);
 		setTargets(
-				ShooterConstants.TALON_2_INCH_TARGET_RPM,
-				ShooterConstants.TALON_3_INCH_TARGET_RPM,
+				autoTwoInchRpm,
+				autoThreeInchRpm,
 				ShooterConstants.NEO_550_SPEED_PERCENT,
 				ShooterConstants.ROLLER_SPEED_PERCENT);
 	}
@@ -119,6 +121,7 @@ public class Shooter extends SubsystemBase {
 		Logger.recordOutput("Shooter/TargetNeoPercent", targetNeoPercent);
 		Logger.recordOutput("Shooter/TargetRollerPercent", targetRollerPercent);
 		Logger.recordOutput("Shooter/AutoDistanceFeet", autoDistanceFeet);
-		Logger.recordOutput("Shooter/Auto3InchPercent", autoThreeInchPercent);
+		Logger.recordOutput("Shooter/Auto2InchRPM", autoTwoInchRpm);
+		Logger.recordOutput("Shooter/Auto3InchRPM", autoThreeInchRpm);
 	}
 }

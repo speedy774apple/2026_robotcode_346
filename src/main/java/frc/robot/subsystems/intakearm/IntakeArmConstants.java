@@ -22,7 +22,7 @@ public final class IntakeArmConstants {
 	// Tuning mode: POV controls manual open loop, arm is backdrivable.
 	public static final boolean ARM_TUNING_MODE = true;
 	// Manual output percent for POV up/down in tuning mode.
-	public static final double ARM_MANUAL_OUTPUT_PERCENT = 10.0;
+	public static final double ARM_MANUAL_OUTPUT_PERCENT = 30.0;
 	// Soft limit buffer to prevent pushing into hard stops.
 	public static final double ARM_SOFT_LIMIT_BUFFER_DEG = 0.5;
 

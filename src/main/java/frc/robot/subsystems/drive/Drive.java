@@ -105,7 +105,6 @@ public class Drive extends SubsystemBase {
 	private final SysIdRoutine sysId;
 	private final Alert gyroDisconnectedAlert = new Alert("Disconnected gyro, using kinematics as fallback.",
 			AlertType.kError);
-	private final Field2d field = new Field2d();
 
 	private SwerveDriveKinematics kinematics = new SwerveDriveKinematics(getModuleTranslations());
 	private Rotation2d rawGyroRotation = new Rotation2d();
@@ -137,6 +136,7 @@ public class Drive extends SubsystemBase {
 	private SwerveSetpoint previousSetpoint;
 
 	private final List<Pose2d> alignPositions;
+	private final Field2d field2d = new Field2d();
 
 	public Drive(
 			GyroIO gyroIO,
@@ -152,7 +152,6 @@ public class Drive extends SubsystemBase {
 
 		// Usage reporting for swerve template
 		HAL.report(tResourceType.kResourceType_RobotDrive, tInstances.kRobotDriveSwerve_AdvantageKit);
-		SmartDashboard.putData("Field", field);
 
 		// Start odometry thread
 		PhoenixOdometryThread.getInstance().start();
@@ -201,6 +200,9 @@ public class Drive extends SubsystemBase {
 						tag.pose.toPose2d().getRotation().rotateBy(Rotation2d.k180deg)));
 			}
 		}
+
+		// Publish Field2d so WPILib sim GUI shows the robot pose.
+		SmartDashboard.putData("Field", field2d);
 	}
 
 	@Override
@@ -262,14 +264,11 @@ public class Drive extends SubsystemBase {
 
 		// Log robot pose (odometry + vision fused) for AdvantageScope visualization
 		Pose2d robotPose = poseEstimator.getEstimatedPosition();
-		field.setRobotPose(robotPose);
 		// Smooth rotation so field-relative drive doesn't jitter
 		smoothedRotation = smoothedRotation.interpolate(robotPose.getRotation(), ROTATION_SMOOTH_ALPHA);
 		Logger.recordOutput("Odometry/Robot", robotPose);
 		Logger.recordOutput("RobotPose2d", robotPose);
 		Logger.recordOutput("RobotPose3d", new Pose3d(robotPose));
-<<<<<<< HEAD
-=======
 		field2d.setRobotPose(robotPose);
 
 		// Stop moving when disabled (but keep pose updates so the field still renders)
@@ -284,7 +283,6 @@ public class Drive extends SubsystemBase {
 			Logger.recordOutput("SwerveStates/SetpointsOptimized", new SwerveModuleState[] {});
 			return; // Don't process any commands when disabled
 		}
->>>>>>> b7fabbeea419cf4d01a350e5a6e23ca5996069e5
 	}
 
 	/**
